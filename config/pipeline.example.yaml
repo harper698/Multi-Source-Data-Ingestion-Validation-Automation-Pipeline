@@ -1,0 +1,158 @@
+# Multi-Source Data Ingestion, Validation & Automation Pipeline Configuration
+# Copy to config/pipeline.yaml and customize without editing Python code.
+
+pipeline:
+  name: "multi-source-ingestion-pipeline"
+  default_mode: "incremental"            # full | incremental
+  database_path: "${DATABASE_PATH:-data/pipeline.db}"
+  report_dir: "reports"
+  report_formats:
+    - "md"
+    - "json"
+    - "csv"
+  log_dir: "logs"
+  log_level: "${LOG_LEVEL:-INFO}"
+
+schedule:
+  full_sync_cron: "0 2 * * *"
+  incremental_sync_cron: "*/15 * * * *"
+  interval_seconds: 900                  # Example interval for `python3 main.py --interval 900`
+
+http:
+  timeout_seconds: 10
+  max_retries: 3
+  backoff_factor: 1.5
+  fallback_to_mock: true
+
+# Add or edit named sources below without modifying core code.
+# Supported connector types: "mock", "http_json" (alias: "rest_json")
+sources:
+  sample_telemetry:
+    enabled: true
+    type: "mock"
+    entities:
+      - "sensor_alpha"
+      - "sensor_beta"
+      - "sensor_gamma"
+    metrics:
+      - name: "temperature_c"
+        baseline: 22.5
+        unit: "C"
+      - name: "humidity_pct"
+        baseline: 54.0
+        unit: "pct"
+      - name: "latency_ms"
+        baseline: 42.0
+        unit: "ms"
+
+  open_meteo_nyc:
+    enabled: true
+    type: "http_json"
+    endpoint: "https://api.open-meteo.com/v1/forecast"
+    method: "GET"
+    timeout_seconds: 8
+    max_retries: 2
+    # Optional incremental sync options for HTTP/JSON sources:
+    # since_param: "updated_after"       # Query parameter name to receive saved cursor
+    # filter_by_since: true              # Client-side filter dropping records with observed_at <= cursor
+    params:
+      latitude: 40.7128
+      longitude: -74.0060
+      current: "temperature_2m,relative_humidity_2m,wind_speed_10m"
+      timezone: "UTC"
+    records_path: ""
+    field_mapping:
+      entity_id: "literal:new_york"
+      observed_at: "current.time"
+      metrics:
+        - name: "temperature_c"
+          path: "current.temperature_2m"
+          unit: "C"
+        - name: "humidity_pct"
+          path: "current.relative_humidity_2m"
+          unit: "pct"
+        - name: "windspeed_kmh"
+          path: "current.wind_speed_10m"
+          unit: "km/h"
+    fallback_records:
+      - entity_id: "new_york"
+        metric_name: "temperature_c"
+        value: 14.2
+        unit: "C"
+      - entity_id: "new_york"
+        metric_name: "humidity_pct"
+        value: 61.0
+        unit: "pct"
+      - entity_id: "new_york"
+        metric_name: "windspeed_kmh"
+        value: 12.8
+        unit: "km/h"
+
+  coingecko_btc:
+    enabled: true
+    type: "http_json"
+    endpoint: "https://api.coingecko.com/api/v3/simple/price"
+    method: "GET"
+    timeout_seconds: 8
+    max_retries: 2
+    params:
+      ids: "bitcoin"
+      vs_currencies: "usd"
+      include_24hr_vol: "true"
+      include_last_updated_at: "true"
+    records_path: ""
+    field_mapping:
+      entity_id: "literal:bitcoin"
+      observed_at: "bitcoin.last_updated_at"
+      metrics:
+        - name: "price_usd"
+          path: "bitcoin.usd"
+          unit: "USD"
+        - name: "volume_24h_usd"
+          path: "bitcoin.usd_24h_vol"
+          unit: "USD"
+    fallback_records:
+      - entity_id: "bitcoin"
+        metric_name: "price_usd"
+        value: 68450.25
+        unit: "USD"
+      - entity_id: "bitcoin"
+        metric_name: "volume_24h_usd"
+        value: 28450000000.0
+        unit: "USD"
+
+validation:
+  drop_duplicates: true
+  drop_invalid: true
+  allow_future_seconds: 300
+  metric_bounds:
+    price_usd:
+      min: 0.000001
+      max: 10000000.0
+    volume_24h_usd:
+      min: 0.0
+      max: 1000000000000.0
+    temperature_c:
+      min: -90.0
+      max: 65.0
+    windspeed_kmh:
+      min: 0.0
+      max: 450.0
+    humidity_pct:
+      min: 0.0
+      max: 100.0
+    latency_ms:
+      min: 0.0
+      max: 60000.0
+
+notifications:
+  console_enabled: true
+  webhook_enabled: true
+  webhook_url: "${ALERT_WEBHOOK_URL:-}"
+  webhook_timeout_seconds: 5
+  fallback_log_path: "logs/webhook_fallback.jsonl"
+  notify_on_completion: true
+  thresholds:
+    max_invalid_ratio: 0.10
+    min_records_expected: 1
+    max_source_failures: 0

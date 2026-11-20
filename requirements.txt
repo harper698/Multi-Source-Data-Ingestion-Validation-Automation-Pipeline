@@ -1,0 +1,5 @@
+# Core pipeline runs on Python 3.9+ standard library out of the box.
+# Recommended packages for reliable HTTPS CA verification, YAML parsing, and test running:
+certifi>=2024.2.2
+PyYAML>=6.0
+pytest>=7.4

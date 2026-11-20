@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Sample macOS launchd LaunchAgent for scheduled pipeline runs.
+  1. Copy to ~/Library/LaunchAgents/com.pipeline.ingestion.plist
+  2. Replace /path/to/... placeholders with your actual project and Python paths.
+  3. Load with:   launchctl load ~/Library/LaunchAgents/com.pipeline.ingestion.plist
+  4. Unload with: launchctl unload ~/Library/LaunchAgents/com.pipeline.ingestion.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.pipeline.ingestion</string>
+
+    <key>WorkingDirectory</key>
+    <string>/path/to/Multi-Source Data_Ingestion_Validation&amp;Automation_Pipeline</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>main.py</string>
+        <string>--config</string>
+        <string>config/pipeline.yaml</string>
+        <string>--mode</string>
+        <string>incremental</string>
+    </array>
+
+    <!-- Run every 900 seconds (15 minutes) -->
+    <key>StartInterval</key>
+    <integer>900</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/path/to/Multi-Source Data_Ingestion_Validation&amp;Automation_Pipeline/logs/launchd.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/path/to/Multi-Source Data_Ingestion_Validation&amp;Automation_Pipeline/logs/launchd.err.log</string>
+</dict>
+</plist>

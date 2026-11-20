@@ -1,0 +1,12 @@
+# Sample crontab entries for Multi-Source Data Ingestion, Validation & Automation Pipeline
+# Install with: crontab -e
+# Update PROJECT_DIR and PYTHON_BIN to match your environment.
+
+PROJECT_DIR=/path/to/Multi-Source Data_Ingestion_Validation&Automation_Pipeline
+PYTHON_BIN=/usr/bin/python3
+
+# Incremental sync every 15 minutes
+*/15 * * * * cd "$PROJECT_DIR" && "$PYTHON_BIN" main.py --config config/pipeline.yaml --mode incremental >> logs/cron.log 2>&1
+
+# Full reconciliation sync daily at 02:00
+0 2 * * * cd "$PROJECT_DIR" && "$PYTHON_BIN" main.py --config config/pipeline.yaml --mode full >> logs/cron.log 2>&1
